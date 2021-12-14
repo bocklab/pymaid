@@ -26,7 +26,8 @@ import numpy as np
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import vispy.visuals
+    #Comment to avoid "file system relative paths not allowed in hardened programs" withv vispy
+    #import vispy.visuals
 
 from . import core, fetch, config, client
 

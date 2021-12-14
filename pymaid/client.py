@@ -985,3 +985,7 @@ class CatmaidInstance:
     def _set_nodes_reviewed_url(self, node_id, **GET):
         """Generate url for fetching skeleton change history."""
         return self.make_url(self.project_id, 'node', node_id, 'reviewed', **GET)
+
+    def _get_similarity_list_url(self, **GET):
+        """Generate url for fetching available NBLAST similarity tasks."""
+        return self.make_url(self.project_id, 'similarity', 'queries', **GET)
