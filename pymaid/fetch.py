@@ -85,7 +85,7 @@ __all__ = sorted(['get_annotation_details', 'get_annotation_id',
                   'get_origin', 'get_skids_by_origin',
                   'get_sampler', 'get_sampler_domains', 'get_sampler_counts',
                   'get_skeleton_change',
-                  'get_similarity_list'])
+                  'get_similarity_config_list', 'get_similarity_list'])
 
 # Set up logging
 logger = config.logger
@@ -4810,6 +4810,29 @@ def get_skeleton_change(x, chunk_size=50, remote_instance=None):
     return change
 
 
+@cache.undo_on_error
+def get_similarity_config_list(remote_instance=None):
+    """List all available NBLAST configurations.
+
+    Parameters
+    ----------
+    remote_instance :   CatmaidInstance, optional
+                        If not provided, will search for globally defined
+                        remote instance.
+
+    Returns
+    -------
+
+    Examples
+    --------
+    >>> # Get all similarity list
+    >>> config_list = pymaid.get_similarity_config_list()
+    """
+    remote_instance = utils._eval_remote_instance(remote_instance)
+
+    config_list = remote_instance.fetch(remote_instance._get_similarity_config_list())
+
+    return pd.DataFrame.from_dict(config_list)
 
 
 @cache.undo_on_error
@@ -4828,13 +4851,11 @@ def get_similarity_list(remote_instance=None):
     Examples
     --------
     >>> # Get all similarity list
-    >>> labels = pymaid.get_similarity_list()
+    >>> similarity_list = pymaid.get_similarity_list()
     """
     remote_instance = utils._eval_remote_instance(remote_instance)
 
     similarity_list = remote_instance.fetch(remote_instance._get_similarity_list_url())
 
-    # import pprint
-    # pprint.PrettyPrinter().pprint(similarity_list)
-    return pd.DataFrame(similarity_list)
+    return pd.DataFrame.from_dict(similarity_list)
 
