@@ -4933,7 +4933,6 @@ def get_similarity_cluster(similarity_id, bbox, unit='NM',
     url = remote_instance._get_similarity_cluster_url(similarity_id, **get_args)
     data = remote_instance.fetch(url)
 
-    print(post)
     data = pd.DataFrame.from_dict(data)
 
     return data
