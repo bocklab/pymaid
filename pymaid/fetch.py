@@ -4915,23 +4915,23 @@ def get_similarity_cluster(similarity_id, bbox, unit='NM',
         bbox[[0, 1], :] = bbox[[0, 1], :] * kwargs.get('xy_res', 4)
         bbox[[2], :] = bbox[[2], :] * kwargs.get('z_res', 40)
 
-    post = dict(minx=min(bbox[0]),
-                maxx=max(bbox[0]),
-                miny=min(bbox[1]),
-                maxy=max(bbox[1]),
-                minz=min(bbox[2]),
-                maxz=max(bbox[2])
+    get_args = dict(min_x=min(bbox[0]),
+                max_x=max(bbox[0]),
+                min_y=min(bbox[1]),
+                max_y=max(bbox[1]),
+                min_z=min(bbox[2]),
+                max_z=max(bbox[2])
                 )
 
     if min_cable_length:
-        post['min_cable_length'] = min_cable_length
+        get_args['min_cable_length'] = min_cable_length
     if max_norm_dist:
-        post['max_norm_dist'] = max_norm_dist
+        get_args['max_norm_dist'] = max_norm_dist
     if min_cluster_size:
-        post['min_cluster_size'] = min_cluster_size
+        get_args['min_cluster_size'] = min_cluster_size
 
-    url = remote_instance._get_similarity_cluster_url()
-    data = remote_instance.fetch(url, post=post)
+    url = remote_instance._get_similarity_cluster_url(similarity_id, **get_args)
+    data = remote_instance.fetch(url)
 
     print(post)
     data = pd.DataFrame.from_dict(data)
