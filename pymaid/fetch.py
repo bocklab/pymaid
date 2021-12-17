@@ -85,7 +85,8 @@ __all__ = sorted(['get_annotation_details', 'get_annotation_id',
                   'get_origin', 'get_skids_by_origin',
                   'get_sampler', 'get_sampler_domains', 'get_sampler_counts',
                   'get_skeleton_change',
-                  'get_similarity_config_list', 'get_similarity_list'])
+                  'get_similarity_config_list', 'get_similarity_list',
+                  'get_similarity_cluster'])
 
 # Set up logging
 logger = config.logger
@@ -4822,6 +4823,7 @@ def get_similarity_config_list(remote_instance=None):
 
     Returns
     -------
+    TODO
 
     Examples
     --------
@@ -4830,7 +4832,7 @@ def get_similarity_config_list(remote_instance=None):
     """
     remote_instance = utils._eval_remote_instance(remote_instance)
 
-    config_list = remote_instance.fetch(remote_instance._get_similarity_config_list())
+    config_list = remote_instance.fetch(remote_instance._get_similarity_config_url())
 
     return pd.DataFrame.from_dict(config_list)
 
@@ -4847,6 +4849,7 @@ def get_similarity_list(remote_instance=None):
 
     Returns
     -------
+    TODO
 
     Examples
     --------
@@ -4859,3 +4862,79 @@ def get_similarity_list(remote_instance=None):
 
     return pd.DataFrame.from_dict(similarity_list)
 
+
+@cache.undo_on_error
+def get_similarity_cluster(similarity_id, bbox, unit='NM',
+                           min_cable_length=None, max_norm_dist=None, min_cluster_size=None,
+                           remote_instance=None, **kwargs):
+    """Get a set of similarity clusters in a bounding box.
+
+    Parameters
+    ----------
+    similarity_id :         The similarity  to load.
+    bbox :                  list-like | dict | pymaid.Volume
+                            Coordinates of the bounding box. Can be either:
+
+                              1. List/np.array: ``[[left, right], [top, bottom], [z1, z2]]``
+                              2. Dictionary ``{'left': int|float, 'right': ..., ...}``
+    unit :                  'NM' | 'PIXEL'
+                            Unit of your coordinates. Attention:
+                            'PIXEL' will also assume that Z1/Z2 is in slices.
+                            By default, a X/Y resolution of 3.8nm and a Z
+                            resolution of 35nm is assumed. Pass 'xy_res' and
+    min_cable_length :      float, optional
+                            The minimum length of skeletons to consider.
+    max_norm_dist :         float, optional
+                            The maximum distance in [0,1] between two neurons to be considered in cluster.
+    min_cluster_size :      int, optional
+                            The minimum cluster size.
+    remote_instance :       CatmaidInstance
+                            If not passed directly, will try using global.
+
+    Returns
+    -------
+    TODO
+
+    """
+
+    remote_instance = utils._eval_remote_instance(remote_instance)
+
+    if isinstance(bbox, ns.Volume):
+        bbox = bbox.bbox
+
+    if isinstance(bbox, dict):
+        bbox = np.array([[bbox['left'], bbox['right']],
+                         [bbox['top'], bbox['bottom']],
+                         [bbox['z1'], bbox['z2']]
+                         ])
+
+    if not isinstance(bbox, np.ndarray):
+        bbox = np.array(bbox)
+
+    if unit == 'PIXEL':
+        bbox[[0, 1], :] = bbox[[0, 1], :] * kwargs.get('xy_res', 4)
+        bbox[[2], :] = bbox[[2], :] * kwargs.get('z_res', 40)
+
+    post = dict(minx=min(bbox[0]),
+                maxx=max(bbox[0]),
+                miny=min(bbox[1]),
+                maxy=max(bbox[1]),
+                minz=min(bbox[2]),
+                maxz=max(bbox[2])
+                )
+
+    if min_cable_length:
+        post['min_cable_length'] = min_cable_length
+    if max_norm_dist:
+        post['max_norm_dist'] = max_norm_dist
+    if min_cluster_size:
+        post['min_cluster_size'] = min_cluster_size
+
+    url = remote_instance._get_similarity_cluster_url()
+    data = remote_instance.fetch(url, post=post)
+
+    print(post)
+    data = pd.DataFrame.from_dict(data)
+
+    return data
+    
