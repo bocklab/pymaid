@@ -997,3 +997,7 @@ class CatmaidInstance:
     def _get_similarity_cluster_url(self, similarity_id, **GET):
         """Generate url for fetching available NBLAST similarity tasks."""
         return self.make_url(self.project_id, 'similarity', similarity_id, 'cluster', **GET)
+
+    def _get_similarity_skeletons_url(self, similarity_id, **GET):
+        """Generate url for fetching available NBLAST similarity tasks."""
+        return self.make_url(self.project_id, 'similarity', similarity_id, 'skeletons', **GET)

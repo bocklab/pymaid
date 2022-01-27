@@ -86,7 +86,7 @@ __all__ = sorted(['get_annotation_details', 'get_annotation_id',
                   'get_sampler', 'get_sampler_domains', 'get_sampler_counts',
                   'get_skeleton_change',
                   'get_similarity_config_list', 'get_similarity_list',
-                  'get_similarity_cluster'])
+                  'get_similarity_cluster', 'get_similarity_skeletons'])
 
 # Set up logging
 logger = config.logger
@@ -4937,3 +4937,77 @@ def get_similarity_cluster(similarity_id, bbox, unit='NM',
 
     return data
     
+@cache.undo_on_error
+def get_similarity_skeletons(similarity_id, skeleton_ids=None, min_similarity_score=None, bbox=None, unit='NM',
+                           min_cable_length=None, remote_instance=None, **kwargs):
+    """Get a set of skeletons that were considered similar to others in a particular similarity computation. TODO
+
+    Parameters
+    ----------
+    similarity_id :         The similarity  to load.
+    skeleton_ids :          TODO
+    min_similarity_score :  TODO
+    bbox :                  list-like | dict | pymaid.Volume
+                            Coordinates of the bounding box. Can be either:
+
+                              1. List/np.array: ``[[left, right], [top, bottom], [z1, z2]]``
+                              2. Dictionary ``{'left': int|float, 'right': ..., ...}``
+    unit :                  'NM' | 'PIXEL'
+                            Unit of your coordinates. Attention:
+                            'PIXEL' will also assume that Z1/Z2 is in slices.
+                            By default, a X/Y resolution of 3.8nm and a Z
+                            resolution of 35nm is assumed. Pass 'xy_res' and
+    min_cable_length :      float, optional
+                            The minimum length of skeletons to consider.
+    remote_instance :       CatmaidInstance
+                            If not passed directly, will try using global.
+
+    Returns
+    -------
+    TODO
+
+    """
+
+    remote_instance = utils._eval_remote_instance(remote_instance)
+
+    if bbox:
+        if isinstance(bbox, ns.Volume):
+            bbox = bbox.bbox
+
+        if isinstance(bbox, dict):
+            bbox = np.array([[bbox['left'], bbox['right']],
+                            [bbox['top'], bbox['bottom']],
+                            [bbox['z1'], bbox['z2']]
+                            ])
+
+        if not isinstance(bbox, np.ndarray):
+            bbox = np.array(bbox)
+
+        if unit == 'PIXEL':
+            bbox[[0, 1], :] = bbox[[0, 1], :] * kwargs.get('xy_res', 4)
+            bbox[[2], :] = bbox[[2], :] * kwargs.get('z_res', 40)
+
+        get_args = dict(min_x=min(bbox[0]),
+                    max_x=max(bbox[0]),
+                    min_y=min(bbox[1]),
+                    max_y=max(bbox[1]),
+                    min_z=min(bbox[2]),
+                    max_z=max(bbox[2])
+                    )
+    else:
+        get_args = {}
+
+    if min_cable_length:
+        get_args['min_cable_length'] = min_cable_length
+    if skeleton_ids:
+        get_args['skeleton_ids'] = skeleton_ids
+    if min_similarity_score:
+        get_args['min_similarity_score'] = min_similarity_score
+
+    url = remote_instance._get_similarity_skeletons_url(similarity_id, **get_args)
+    data = remote_instance.fetch(url)
+
+    data = pd.DataFrame.from_dict(data)
+    data.columns = ['skeleton_id', 'matches']
+
+    return data
