@@ -1,4 +1,4 @@
-#    This script is part of pymaid (http://www.github.com/schlegelp/pymaid).
+#    This script is part of pymaid (http://www.github.com/navis-org/pymaid).
 #    Copyright (C) 2017 Philipp Schlegel
 #
 #   This program is free software: you can redistribute it and/or modify
@@ -189,7 +189,7 @@ class CatmaidInstance:
     """
 
     def __init__(self, server, api_token, http_user=None, http_password=None,
-                 project_id=1, max_threads=100, make_global=True, caching=True):
+                 project_id=1, max_threads=10, make_global=True, caching=True):
         # Catch too many backslashes
         if server.endswith('/'):
             server = server[:-1]
