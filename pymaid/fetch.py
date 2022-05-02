@@ -5008,6 +5008,10 @@ def get_similarity_skeletons(similarity_id, skeleton_ids=None, min_similarity_sc
     data = remote_instance.fetch(url)
 
     data = pd.DataFrame.from_dict(data)
-    data.columns = ['skeleton_id', 'matches']
-
+    
+    if len(data.columns) == 2:
+        data.columns = ['skeleton_id', 'matches']
+    else:
+        return None
+    
     return data
