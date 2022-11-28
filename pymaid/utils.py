@@ -14,24 +14,29 @@
 #    You should have received a copy of the GNU General Public License
 #    along
 
-import collections
 import itertools
 import os
 import six
 import sys
 import warnings
+import typing as tp
 
 import pandas as pd
 import numpy as np
 
+from collections.abc import Iterable
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import vispy.visuals
+    try:
+        from vispy.visuals import Visual
+    except ImportError:
+        Visual = None
 
 from . import core, fetch, config, client
 
 # Set up logging
-logger = config.logger
+logger = config.get_logger(__name__)
 
 __all__ = ['set_loggers', 'set_pbars', 'eval_skids', 'clear_cache', 'shorten_name']
 
@@ -159,7 +164,7 @@ def _make_iterable(x, force_type=None):
     For dicts, keys will be turned into array.
 
     """
-    if not isinstance(x, collections.Iterable) or isinstance(x, six.string_types):
+    if not isinstance(x, Iterable) or isinstance(x, six.string_types):
         x = [x]
 
     if isinstance(x, dict) or isinstance(x, set):
@@ -188,7 +193,7 @@ def _make_non_iterable(x):
 def _is_iterable(x):
     """Check is input is iterable but not str, dictionary or pandas DataFrame.
     """
-    if isinstance(x, collections.Iterable) and not isinstance(x, (six.string_types, pd.DataFrame)):
+    if isinstance(x, Iterable) and not isinstance(x, (six.string_types, pd.DataFrame)):
         return True
     else:
         return False
@@ -203,7 +208,7 @@ def _eval_conditions(x):
     return [i for i in x if not i.startswith('~')], [i[1:] for i in x if i.startswith('~')]
 
 
-def _eval_remote_instance(remote_instance, raise_error=True):
+def _eval_remote_instance(remote_instance, raise_error=True) -> client.CatmaidInstance:
     """Evaluates remote instance.
 
     If input is None, checks for globally defined remote instances as fall
@@ -529,7 +534,11 @@ def _parse_objects(x, remote_instance=None):
     skdata = core.CatmaidNeuronList(neuron_obj, make_copy=False)
 
     # Collect visuals
-    visuals = [ob for ob in x if isinstance(ob, vispy.visuals.Visual)]
+    if Visual is not None:
+        visuals = [ob for ob in x if isinstance(ob, Visual)]
+    else:
+        # Best guess if vispy not installed
+        visuals = [ob for ob in x if 'Visual' in str(type(x)) and 'vispy' in str(type(x))]
 
     # Collect dotprops
     dotprops = [ob for ob in x if isinstance(ob, core.Dotprops)]
@@ -708,3 +717,95 @@ def to_float(x):
         return None
     except BaseException:
         raise
+
+
+class DataFrameBuilder:
+    def __init__(
+        self, columns: tp.Sequence[tp.Hashable], dtypes: tp.Optional[tp.Sequence] = None
+    ):
+        self.columns: tp.Dict[tp.Hashable, list] = {c: [] for c in columns}
+        self.dtypes: tp.Optional[list] = list(dtypes) if dtypes else None
+        if dtypes is not None and len(dtypes) != len(self.columns):
+            raise ValueError()
+
+    def _check_len(self, row: tp.Collection):
+        """Raise an error if row is of incorrect length.
+
+        Parameters
+        ----------
+        row : Collection
+            Row to be added (as dict or sequence).
+
+        Raises
+        ------
+        ValueError
+            If row length does not match number of columns.
+        """
+        if len(row) != len(self.columns):
+            raise ValueError(
+                f"Row length ({len(row)}) does not match number of columns ({len(self.columns)})"
+            )
+
+    def append_row(self, row: tp.Sequence):
+        """Append a sequence to the rows.
+
+        Parameters
+        ----------
+        row : Sequence
+            Must be same length as number of columns.
+
+        Returns
+        -------
+        self
+        """
+        self._check_len(row)
+        for item, col in zip(row, self.columns.values()):
+            col.append(item)
+        return self
+
+    def append_dict(self, row: tp.Dict[tp.Hashable, tp.Any]):
+        """Append a dict to the rows.
+
+        Parameters
+        ----------
+        row : dict[tp.Hashable, tp.Any]
+            Keys must match columns.
+
+        Returns
+        -------
+        self
+        """
+        self._check_len(row)
+        for k, v in row.items():
+            self.columns[k].append(v)
+        return self
+
+    def build(self, index_col=None) -> pd.DataFrame:
+        """Build the dataframe.
+
+        Parameters
+        ----------
+        index_col : Hashable, optional
+            Which column to use as the index, by default None
+            (i.e. numeric index in insertion order).
+
+        Returns
+        -------
+        pandas.DataFrame
+        """
+        cols = dict()
+        index = None
+
+        for idx, (k, v) in enumerate(self.columns.items()):
+            dtype = self.dtypes[idx] if self.dtypes else None
+            v2 = pd.Series(v, dtype=dtype, name=k)
+            if k == index_col:
+                index = v2
+            else:
+                cols[k] = v2
+
+        df = pd.DataFrame.from_dict(cols)
+        if index is not None:
+            df.index = index
+
+        return df
