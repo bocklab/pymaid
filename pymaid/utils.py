@@ -238,8 +238,6 @@ def _eval_remote_instance(remote_instance, raise_error=True) -> client.CatmaidIn
                                 'either define globally or pass explicitly '
                                 'as "remote_instance". See '
                                 '`help(pymaid.CatmaidInstance) for details.')
-            else:
-                logger.warning('No global remote instance found.')
     elif not isinstance(remote_instance, client.CatmaidInstance):
         error = 'Expected None or CatmaidInstance, got {}'.format(type(remote_instance))
         if raise_error:
